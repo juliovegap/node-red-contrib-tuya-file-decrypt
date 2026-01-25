@@ -1,0 +1,31 @@
+<script type="text/javascript">
+  RED.nodes.registerType('tuya-snapshot', {
+    category: 'function',
+    color: '#a6bbcf',
+    defaults: {
+      name: {value:""},
+      accessId: {value:""},
+      accessSecret: {value:""},
+      deviceId: {value:""}
+    },
+    inputs:1,
+    outputs:1,
+    icon: "camera.png",
+    label: function() {
+      return this.name||"tuya-snapshot";
+    }
+  });
+</script>
+
+<div class="form-row">
+  <label for="node-input-accessId"><i class="fa fa-key"></i> Access ID</label>
+  <input type="text" id="node-input-accessId" placeholder="Access ID">
+</div>
+<div class="form-row">
+  <label for="node-input-accessSecret"><i class="fa fa-lock"></i> Access Secret</label>
+  <input type="password" id="node-input-accessSecret" placeholder="Access Secret">
+</div>
+<div class="form-row">
+  <label for="node-input-deviceId"><i class="fa fa-camera"></i> Device ID</label>
+  <input type="text" id="node-input-deviceId" placeholder="Device ID">
+</div>
