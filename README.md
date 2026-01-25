@@ -18,4 +18,4 @@ Consulta el flujo de ejemplo incluido para obtener snapshots y guardarlos.
 
 ## Licencia
 
-MIT
+GNU V3.0
