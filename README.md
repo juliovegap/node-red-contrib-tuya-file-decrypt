@@ -18,4 +18,4 @@ Consulta el flujo de ejemplo incluido para obtener snapshots y guardarlos.
 
 ## Licencia
 
-GNU V3.0
+GPL-3.0 Licence
