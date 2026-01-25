@@ -10,7 +10,7 @@
       "tuya-snapshot": "tuya-snapshot.js"
     }
   },
-  "keywords": ["node-red", "tuya", "snapshot", "camera"],
+  "keywords": ["node-red", "tuya", "snapshot", "camera", "region"],
   "author": "Julio",
   "license": "MIT"
 }
