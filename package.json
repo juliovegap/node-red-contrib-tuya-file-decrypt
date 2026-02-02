@@ -1,16 +1,35 @@
 {
-  "name": "node-red-contrib-tuya-snapshot",
-  "version": "1.0.0",
-  "description": "Nodo Node-RED para obtener snapshots de cámaras Tuya",
+  "name": "node-red-contrib-tuya-file-decrypt",
+  "version": "1.0.1",
+  "description": "Node-RED Package to decrypt Tuya Files",
+  "keywords": [
+    "node-red",
+    "tuya",
+    "file",
+    "decrypt",
+    "iot",
+    "camera",
+    "home-assistant"
+  ],
+  "author": "juliovegap",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juliovegap/node-red-contrib-tuya-file-decrypt.git"
+  },
   "dependencies": {
-    "@tuya/tuya-connector": "^1.0.0"
+    "axios": "^1.6.0",
+    "crypto-js": "^4.2.0",
+    "@tuya/tuya-connector-nodejs": "^2.1.2"
   },
   "node-red": {
     "nodes": {
-      "tuya-snapshot": "tuya-snapshot.js"
+      "tuya-file-decrypt": "tuya-file-decrypt.js"
     }
   },
-  "keywords": ["node-red", "tuya", "snapshot", "camera", "region"],
-  "author": "Julio",
-  "license": "MIT"
+  "scripts": {
+    "build": "npm pack",
+    "prepublishOnly": "npm test",
+    "test": "node ./tests/basic.js"
+  }
 }
