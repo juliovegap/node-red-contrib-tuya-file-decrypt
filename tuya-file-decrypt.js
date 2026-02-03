@@ -3,101 +3,115 @@ module.exports = function(RED) {
         RED.nodes.createNode(this, config);
         const node = this;
         
-        const tuya = require("./lib/tuya");
         const decrypt = require("./lib/decrypt");
 
-        // Set default endpoint if missing (defaults to Europe)
-        if (!config.endpoint) config.endpoint = "https://openapi.tuyaeu.com";
+        function buildURL(bucket, file, region) {
+            if (!bucket || !file) {
+                throw new Error("Missing bucket or file to build URL");
+            }
+
+            const cleanFile = file.startsWith("/") ? file.slice(1) : file;
+
+            if (region == "eu-central-1") {
+              return `https://${bucket}.oss-eu-central-1.aliyuncs.com/${cleanFile}`;
+            } else if (region == "eu-west-1") {
+              return `https://${bucket}.oss-eu-west-1.aliyuncs.com/${cleanFile}`;
+            } else if (region == "cn-shanghai") {
+              return `https://${bucket}.oss-cn-shanghai.aliyuncs.com/${cleanFile}`;
+            } else if (region == "cn-beijing") {
+              return `https://${bucket}.oss-cn-beijing.aliyuncs.com/${cleanFile}`;
+            } else if (region == "ap-south-1") {
+              return `https://${bucket}.oss-ap-south-1.aliyuncs.com/${cleanFile}`;
+            } else if (region == "ap-southeast-1") {
+              return `https://${bucket}.oss-ap-southeast-1.aliyuncs.com/${cleanFile}`;
+            } else if (region == "us-east-1") {
+              return `https://${bucket}.oss-us-east-1.aliyuncs.com/${cleanFile}`;
+            } else if (region == "us-west-1") {
+              return `https://${bucket}.oss-us-west-1.aliyuncs.com/${cleanFile}`;
+            } else return;
+        }
 
         node.on("input", async function(msg) {
-            try {
-                // --- 1. Payload Parsing & Extraction ---
-                let bucket, file, key;
-                let decoded = msg.payload;
-
-                // Handle Base64 string payload (Tuya raw format)
-                if (typeof decoded === 'string' && !decoded.trim().startsWith('{')) {
-                    try {
-                        decoded = JSON.parse(Buffer.from(decoded, "base64").toString());
-                    } catch (e) {
-                        node.warn("Payload is string but not valid Base64 JSON. Treating as object...");
-                    }
-                }
-
-                // Extract data from standard Tuya format (DPS 185)
-                // Structure: { bucket: "...", files: [ ["/path/to/img", "AES_KEY"] ] }
-                if (decoded && decoded.files && Array.isArray(decoded.files) && decoded.files.length > 0) {
-                    bucket = decoded.bucket;
-                    file = decoded.files[0][0];
-                    key = decoded.files[0][1];
-                } 
-                // Fallback: Check if user injected data manually via msg properties
-                else if (msg.bucket && msg.file) {
-                    bucket = msg.bucket;
-                    file = msg.file;
-                    key = msg.encryptionKey;
-                }
-
-                // Validation
-                if (!bucket || !file || !key) {
-                    node.error("Missing critical data: 'bucket', 'file', or 'key'. Ensure you are passing the raw Tuya message.");
+        try {
+                // 1. Tuya Credentials Validation
+                if (!config.accessId || !config.accessKey) {
+                    node.error("Tuya credentials missing: accessId or accessKey is empty");
                     return;
                 }
 
-                // Ensure key is a string
-                key = String(key);
-
-                // --- 2. URL Strategy (Plan A vs Plan B) ---
-                const ctx = tuya.createContext(config);
-                let downloadUrl = null;
-
-                // PLAN A: Try to get a Signed URL from Tuya API
-                // This resolves the 403 Forbidden error on private buckets.
-                try {
-                    downloadUrl = await tuya.getSignedUrl(ctx, config.deviceId, bucket, file);
-                    if (downloadUrl) {
-                        node.log("Successfully obtained Signed URL from API.");
-                    }
-                } catch (err) {
-                    // Ignore error and proceed to Plan B
+                if (!config.deviceId) {
+                    node.error("Tuya deviceId is missing");
+                    return;
                 }
 
-                // PLAN B: Construct Manual S3 URL (Fallback)
-                // If Plan A failed, we try to guess the S3 URL.
-                if (!downloadUrl) {
-                    const cleanFile = file.startsWith("/") ? file.slice(1) : file;
-                    
-                    // Note: This URL structure is specific to EU Central. 
-                    // If the bucket is strictly private, this WILL fail with 403, 
-                    // implying the user MUST enable "IP Camera" service in Tuya IoT.
-                    downloadUrl = `https://${bucket}.s3.eu-central-1.amazonaws.com/${cleanFile}`;
-                    
-                    node.warn(`Using fallback S3 URL: ${downloadUrl}`);
-                }
-
-                // --- 3. Download & Decrypt ---
-                node.status({fill:"yellow", shape:"ring", text:"Decrypting..."});
-                
+                // 2. Base64 → JSON Decoding
+                let decoded;
                 try {
-                    const imageBuffer = await decrypt.decryptFile(downloadUrl, key);
-                    
-                    // Prepare Output
-                    msg.payload = imageBuffer.toString("base64"); // Base64 for Dashboard
-                    msg.image = imageBuffer; // Binary buffer for file writing
-                    msg.fileUrl = downloadUrl; // For debugging
-                    
-                    node.send(msg);
-                    node.status({fill:"green", shape:"dot", text:"Success"});
-
-                } catch (err) {
-                    // Specialized Error Handling
-                    if (err.message.includes("403")) {
-                        node.error("Error 403: S3 Access Denied. You MUST authorize the 'IP Camera' service in Tuya IoT Platform to allow URL signing.");
+                    if (typeof msg.payload === 'object') {
+                        decoded = msg.payload; // JSON already
                     } else {
-                        node.error(`Decryption error: ${err.message}`);
+                        decoded = JSON.parse(Buffer.from(msg.payload, "base64").toString()); // Base64
                     }
-                    node.status({fill:"red", shape:"dot", text:"Failed"});
+                } catch (err) {
+                    node.error("Invalid Base64 or JSON payload: " + err.message);
+                    return;
                 }
+
+                // 3. Minimum Length Validation
+                if (!decoded?.files || !Array.isArray(decoded.files) || decoded.files.length === 0) {
+                    node.error("Invalid Tuya payload: missing 'files' array → " + JSON.stringify(decoded));
+                    return;
+                }
+
+                const entry = decoded.files[0];
+                
+                if (!Array.isArray(entry) || entry.length < 2) {
+                    node.error("Invalid Tuya file entry: " + JSON.stringify(entry));
+                    return;
+                }
+
+                // 4. Real Parameter Extraction
+                const file = entry[0];
+                let key = entry[1];
+                const bucket = decoded.bucket;
+                const region = config.region || "eu-central-1";
+
+                if (typeof key !== "string") {
+                    key = String(key);
+                }
+
+                // AES Length Optional Validation
+                if (key.length !== 16 && key.length !== 24 && key.length !== 32) {
+                    node.warn("AES key length is unusual (" + key.length + "): " + key);
+                }
+
+                // 5. S3 Direct Access Construction
+                let fileURL;
+                try {
+                    fileURL = buildURL(bucket, file, region);
+                } catch (err) {
+                    node.error("Error building URL: " + err.message);
+                    return;
+                }
+
+                // 6. File Decrypt
+                let decrypted;
+                try {
+                    decrypted = await decrypt.decryptFile(fileURL, key);
+                } catch (err) {
+                    node.error("Error decrypting file: " + err.message);
+                    return;
+                }
+
+                // 6. Final Output
+                msg.payload = decrypted.toString("base64");
+                msg.image = decrypted;
+                msg.file = file;
+                msg.bucket = bucket;
+                msg.region = region;
+                msg.url = fileURL;
+
+                node.send(msg);
 
             } catch (err) {
                 node.error(`Unexpected error: ${err.message}`);
