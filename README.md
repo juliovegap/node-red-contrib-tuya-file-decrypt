@@ -9,6 +9,8 @@ A Node‑RED node that decrypts **Tuya encrypted files** (AES‑CBC) and returns
 
 This is especially useful for **Tuya‑based cameras and sensors** that stores encrypted snapshots or movement configuration files.
 
+Besides the Tuya credentials, it is **paramount** to enable the **Beta API** on your Tuya IOT Platform (Cloud -> [Your Project] -> Service API and activate "Camera Service") [![Beta PI](https://platform.tuya.com/cloud/products/detail?abilityId=1370222219921203281&id=p176561497301935syac&abilityAuth=0&tab=1)](https://platform.tuya.com/cloud/products/detail?abilityId=1370222219921203281&id=p176561497301935syac&abilityAuth=0&tab=1)
+
 ---
 
 ## ✨ Features
