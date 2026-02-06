@@ -2,34 +2,8 @@ module.exports = function(RED) {
     function TuyaFileDecrypt(config) {
         RED.nodes.createNode(this, config);
         const node = this;
-        
+        const tuya = require("./lib/tuya");
         const decrypt = require("./lib/decrypt");
-
-        function buildURL(bucket, file, region) {
-            if (!bucket || !file) {
-                throw new Error("Missing bucket or file to build URL");
-            }
-
-            const cleanFile = file.startsWith("/") ? file.slice(1) : file;
-
-            if (region == "eu-central-1") {
-              return `https://${bucket}.oss-eu-central-1.aliyuncs.com/${cleanFile}`;
-            } else if (region == "eu-west-1") {
-              return `https://${bucket}.oss-eu-west-1.aliyuncs.com/${cleanFile}`;
-            } else if (region == "cn-shanghai") {
-              return `https://${bucket}.oss-cn-shanghai.aliyuncs.com/${cleanFile}`;
-            } else if (region == "cn-beijing") {
-              return `https://${bucket}.oss-cn-beijing.aliyuncs.com/${cleanFile}`;
-            } else if (region == "ap-south-1") {
-              return `https://${bucket}.oss-ap-south-1.aliyuncs.com/${cleanFile}`;
-            } else if (region == "ap-southeast-1") {
-              return `https://${bucket}.oss-ap-southeast-1.aliyuncs.com/${cleanFile}`;
-            } else if (region == "us-east-1") {
-              return `https://${bucket}.oss-us-east-1.aliyuncs.com/${cleanFile}`;
-            } else if (region == "us-west-1") {
-              return `https://${bucket}.oss-us-west-1.aliyuncs.com/${cleanFile}`;
-            } else return;
-        }
 
         node.on("input", async function(msg) {
         try {
@@ -43,6 +17,9 @@ module.exports = function(RED) {
                     node.error("Tuya deviceId is missing");
                     return;
                 }
+
+                // Tuya context creation
+                const ctx = tuya.createContext(config)
 
                 // 2. Base64 → JSON Decoding
                 let decoded;
@@ -85,12 +62,12 @@ module.exports = function(RED) {
                     node.warn("AES key length is unusual (" + key.length + "): " + key);
                 }
 
-                // 5. S3 Direct Access Construction
+                // 5. Get real URL from Tuya Archive
                 let fileURL;
                 try {
-                    fileURL = buildURL(bucket, file, region);
+                    fileURL = await tuya.getFileURL(ctx, config.deviceId, bucket, file);
                 } catch (err) {
-                    node.error("Error building URL: " + err.message);
+                    node.error("Error fetching file URL from Tuya: " + err.message);
                     return;
                 }
 
