@@ -9,6 +9,10 @@ A Node‑RED node that decrypts **Tuya encrypted files** (AES‑CBC) and returns
 
 This is especially useful for **Tuya‑based cameras and sensors** that stores encrypted snapshots or movement configuration files.
 
+Besides the Tuya credentials, it is **paramount** to enable the **Beta API** on your Tuya IOT Platform (Cloud -> [Your Project] -> Service API and activate "Beta API")
+
+Based on 'How To Parse IPC movement_detect_pic Data' Tuya Support Help (https://support.tuya.com/en/help/_detail/Kbfus79b0gcpi)
+
 ---
 
 ## ✨ Features
